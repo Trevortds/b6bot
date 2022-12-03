@@ -1,4 +1,5 @@
 # This is a sample Python script.
+import os
 import time
 import schedule
 
@@ -10,7 +11,7 @@ from collections.abc import Callable, Iterable
 
 # Note: Replace this value with your own personal access token
 
-personal_access_token = "1/1203279610340333:fc6e02caf8fb172a3232b3d588034ed8"
+personal_access_token = os.environ["ASANA_KEY"]
 
 # Construct an Asana client
 client = asana.Client.access_token(personal_access_token)
