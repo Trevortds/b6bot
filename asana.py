@@ -103,7 +103,7 @@ def print_new(event):
     print(f"New task {event['resource']['name']} added to project: {event['parent']['name']}")
 
 
-def process_events():
+def process_events(channel_objects):
     event_generator = get_events_from_resources([chores_project["gid"], decisions_project["gid"]])
 
     for next_event in event_generator:
