@@ -3,6 +3,8 @@ import discord
 from discord import app_commands
 from discord.ext import tasks, commands
 
+from asana_bot import process_events
+
 intents = discord.Intents.default()
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
@@ -61,18 +63,13 @@ class AsanaWatcher(commands.Cog):
     def cog_unload(self) -> None:
         self.check_new_asana_events.cancel()
 
-    @tasks.loop(seconds=5.0, count=3)
+    @tasks.loop(seconds=5.0)
     async def check_new_asana_events(self):
         self.message_count += 1
         channel = self.client.get_channel(1054443400767741972)
-        # process_events(self.channel_objects)
+        process_events(self.channel_objects)
         await channel.send(f"channel send test {self.message_count}")
 
-    @check_new_asana_events.after_loop
-    async def after_done(self):
-        print("done")
-        channel = self.client.get_channel(1054443400767741972)
-        await channel.send("done")
 
 client.run(bot_token)
 
