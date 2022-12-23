@@ -26,8 +26,29 @@ worker_bae_channel = 1039584677712896110
 
 @tree.command(name="createtask", description="Create an asana task in the General project",
               guild=discord.Object(id=guild_id))
-async def create_task(interaction):
-    await interaction.response.send_message("Not implemented yet, sorry!")
+@app_commands.choices(assignee=[
+        app_commands.Choice(name="Bay Six", value="infoatbay6@gmail.com"),
+        app_commands.Choice(name="Trevor", value="trevortds3@gmail.com"),
+        app_commands.Choice(name="Amelia", value="ameliafineberg@gmail.com"),
+        app_commands.Choice(name="Jules", value="funsizedfox@gmail.com"),
+        app_commands.Choice(name="Mayhem", value="mmayhemstudio7@gmail.com"),
+        app_commands.Choice(name="Sam", value="boettcsm@gmail.com"),
+        app_commands.Choice(name="Kit", value="soongkit@gmail.com"),
+        app_commands.Choice(name="Hale", value="hmmottinger@gmail.com"),
+        app_commands.Choice(name="Noah", value="nabrahamson@gmail.com"),
+        app_commands.Choice(name="Ylva", value="baristasupreme@icloud.com"),
+        app_commands.Choice(name="None", value="")
+        ])
+async def create_task(interaction: Interaction, name: str, due_date_y_m_d: str=date.today().isoformat(), assignee: app_commands.Choice[str] = "", notes: str = ""):
+    print(interaction)
+    print(interaction.user.name)
+    print(assignee.value)
+    try:
+        new_task = await create_new_task(name, author=interaction.user.name,  due_date=due_date_y_m_d, assignee=assignee.value, notes=notes)
+        print(new_task)
+        await interaction.response.send_message("created task: " + new_task['permalink_url'])
+    except Exception as e:
+        await interaction.response.send_message("Something went wrong: " + e)
 
 
 @tree.command(name="createdecision",

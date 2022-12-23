@@ -135,22 +135,18 @@ async def process_events(new_task_callbacks: Iterable[Callable] = None,
         await on_new_tasks(next_event, [print_new] + new_task_callbacks)
         await on_new_assignee(next_event, [print_assignee] + new_assignee_callbacks)
 
-    schedule.every(10).seconds.do(process_events)
-    schedule.every().saturday.at("15:00").do(schedule_test, text="it's three pm")
 
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
-
-
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    while True:
-        main()
-        # try:
-        #     main()
-        # except Exception as e:
-        #     print("Crashed! restarting...")
-        #     print(e)
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+async def create_new_task(name, author, assignee="infoatbay6@gmail.com", notes=None, due_date=None):
+    post_data= {
+            'workspace': b6workspace['gid'],
+            'name': name,
+            'notes': f"Created automatically by {author}\n\n",
+            'projects': [chores_project['gid']]
+        }
+    if assignee:
+        post_data["assignee"] = assignee  # this is a user gid or email
+    if notes:
+        post_data["notes"] = notes
+    if due_date:
+        post_data["due_on"] = due_date
+    return client.tasks.create_task(post_data)
