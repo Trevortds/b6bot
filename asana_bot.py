@@ -1,6 +1,7 @@
 # This is a sample Python script.
 import os
 import time
+from datetime import date, timedelta
 
 import discord
 import schedule
@@ -136,17 +137,34 @@ async def process_events(new_task_callbacks: Iterable[Callable] = None,
         await on_new_assignee(next_event, [print_assignee] + new_assignee_callbacks)
 
 
-async def create_new_task(name, author, assignee="infoatbay6@gmail.com", notes=None, due_date=None):
+async def create_new_task(name, author, assignee="infoatbay6@gmail.com", notes=None, due_date=None, project=chores_project['gid']):
     post_data= {
             'workspace': b6workspace['gid'],
             'name': name,
             'notes': f"Created automatically by {author}\n\n",
-            'projects': [chores_project['gid']]
+            'projects': project
         }
     if assignee:
         post_data["assignee"] = assignee  # this is a user gid or email
     if notes:
-        post_data["notes"] = notes
+        post_data["notes"] += notes
     if due_date:
         post_data["due_on"] = due_date
     return client.tasks.create_task(post_data)
+
+
+def get_task_info(gid):
+    return client.tasks.get_task(gid)
+
+def get_upcoming_tasks():
+    # this would be a convenient way to do it, but search api is only available to premium accounts
+    # tasks = client.tasks.search_tasks_for_workspace(
+    #     workspace_gid=b6workspace['gid']
+    #     params={"due_on.before": datetime.date.today() + datetime.timedelta(days=7)}
+    # )
+    gen = client.projects.tasks(chores_project['gid'],
+                                opt_fields='name,gid,due_on,completed,notes,assignee,assignee.name,permalink_url')
+    def filter_upcoming(task):
+        return (not task.get('completed')) and \
+               date.fromisoformat(task.get('due_on') or '2022-01-01') < date.today() + timedelta(days=7)
+    return filter(filter_upcoming, gen)
