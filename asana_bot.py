@@ -1,6 +1,8 @@
 # This is a sample Python script.
 import os
 import time
+
+import discord
 import schedule
 
 # Press Shift+F10 to execute it or replace it with your code.
@@ -8,6 +10,9 @@ import schedule
 import asana
 from asana.error import InvalidTokenError
 from collections.abc import Callable, Iterable
+
+from discord import TextChannel
+
 
 # Note: Replace this value with your own personal access token
 
@@ -32,6 +37,15 @@ decisions_project = client.projects.find_by_id(1203279731709143)
 chores_project = client.projects.find_by_id(1203288705129613)
 known_projects = [decisions_project, chores_project]
 known_project_ids = list(map( lambda x: x["gid"], known_projects))
+
+
+test_channel = 1054443400767741972
+main_private_channel = 1025848715702980673
+event_planning_channel = 1029794106257444955
+decisions_channel = 1037418339674370128
+friends_channel = 1036694062339731558
+suggestions_channel = 1036697304201170945
+worker_bae_channel = 1039584677712896110
 
 for proj in list(client.projects.find_all(workspace=b6workspace["gid"])):
     if proj["gid"] not in known_project_ids:
@@ -70,7 +84,7 @@ def get_events_from_resources(resource_ids):
         yield from data["data"]
 
 
-def on_new_tasks(event, callbacks: Iterable[Callable] = []):
+async def on_new_tasks(event, callbacks):
     if event["type"] != "task" or \
             event["action"] != "added" or \
             event["parent"]["gid"] not in known_project_ids:
@@ -79,10 +93,10 @@ def on_new_tasks(event, callbacks: Iterable[Callable] = []):
     print(event)
 
     for callback in callbacks:
-        callback(event)
+        await callback(event)
 
 
-def on_new_assignee(event, callbacks: Iterable[Callable] = []):
+async def on_new_assignee(event, callbacks: Iterable[Callable] = []):
     if event["type"] != "task" or event["action"] != "changed" or event["change"]["field"] != "assignee":
         return
     print("Found a assignee update!")
@@ -98,17 +112,44 @@ def print_assignee(event):
     else:
         print(f"New assignee {event['change'].get('new_value', {}).get('name')} added to task: {event['resource']['name']}")
 
-def print_new(event):
+
+async def print_new(event):
     print(event)
     print(f"New task {event['resource']['name']} added to project: {event['parent']['name']}")
 
 
-def process_events(channel_objects):
+async def new_task_to_discord(event, channel_dict: dict[str, TextChannel]):
+    if event["parent"]['gid'] == chores_project['gid']:
+        channel = channel_dict["test"]
+    else:
+        channel = channel_dict["test"]
+
+    embed = discord.Embed(title=f"{event['resource']['name']}", color=0x00ff00)
+    embed.add_field(name='Project', value=event['parent']['name'], inline=True)
+    if event.get('user'):
+        embed.add_field(name='Author', value=event.get('user', {}).get('name', "Automated"))
+    embed.url = f"https://app.asana.com/0/{event['parent']['gid']}/{event['resource']['gid']}"
+    message = await channel.send(event['resource']['name'], embed=embed)
+
+    await message.add_reaction("🙋")
+    if event["parent"]['gid'] == decisions_project['gid']:
+        thread = await message.create_thread(name=event['resource']['name'])
+        await thread.send("Conversation goes here")
+
+
+
+
+async def check_for_upcoming_events(channel: TextChannel):
+    pass
+
+
+async def process_events(channel_dict: dict[str, TextChannel]):
     event_generator = get_events_from_resources([chores_project["gid"], decisions_project["gid"]])
 
     for next_event in event_generator:
-        on_new_tasks(next_event, [print_new])
-        on_new_assignee(next_event, [print_assignee])
+        print(client)
+        await on_new_tasks(next_event, [print_new, lambda x: new_task_to_discord(x, channel_dict)])
+        await on_new_assignee(next_event, [print_assignee])
 
 
 def schedule_test(text):

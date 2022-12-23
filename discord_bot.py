@@ -1,9 +1,10 @@
+import json
 import os
 import discord
-from discord import app_commands
+from discord import app_commands, TextChannel, Reaction, User
 from discord.ext import tasks, commands
 
-from asana_bot import process_events
+from asana_bot import process_events, check_for_upcoming_events
 
 intents = discord.Intents.default()
 client = discord.Client(intents=intents)
@@ -67,9 +68,70 @@ class AsanaWatcher(commands.Cog):
     async def check_new_asana_events(self):
         self.message_count += 1
         channel = self.client.get_channel(1054443400767741972)
-        process_events(self.channel_objects)
-        await channel.send(f"channel send test {self.message_count}")
+        await process_events(self.channel_objects)
 
+    @tasks.loop(hours=24*7)
+    async def check_upcoming_unassigned_events(self):
+        check_for_upcoming_events(self.chanel_objects["test"])
+
+    @client.event
+    async def on_reaction_add(self, reaction, user):
+        # this doesn't work either
+        print("new reaction")
+        print(reaction)
+        print(user)
+        emoji = reaction.emoji
+        if user.bot:
+            return
+
+
+@client.event
+async def on_reaction_add(reaction: Reaction, user: User):
+    # this doesn't work
+    print("new reaction client")
+    print(reaction)
+    emoji = reaction.emoji
+    if user.bot:
+        return
+
+    print("following user wants to volunteer")
+    print(user.display_name)
+    print(user.name)
+    print(user)
+    print(reaction.message.embeds)
+    for embed in reaction.message.embeds:
+        print(embed)
+        print(embed.url)
+
+
+
+
+
+'''
+notes:
+to have discord add reactions to messages, use discord.Message.add_reaction(":emoji:")
+to have it listen for reactions, use the function 
+@bot.event
+async def on_reaction_add(reaction, user)
+
+To make formatted messages, use embeds. eg
+@bot.command()
+async def bug(ctx, desc=None, rep=None):
+    user = ctx.author
+    await ctx.author.send('```Please explain the bug```')
+    responseDesc = await bot.wait_for('message', check=lambda message: message.author == ctx.author, timeout=300)
+    description = responseDesc.content
+    await ctx.author.send('````Please provide pictures/videos of this bug```')
+    responseRep = await bot.wait_for('message', check=lambda message: message.author == ctx.author, timeout=300)
+    replicate = responseRep.content
+    embed = discord.Embed(title='Bug Report', color=0x00ff00)
+    embed.add_field(name='Description', value=description, inline=False)
+    embed.add_field(name='Replicate', value=replicate, inline=True)
+    embed.add_field(name='Reported By', value=user, inline=True)
+    adminBug = bot.get_channel(733721953134837861)
+    await adminBug.send(embed=embed)
+    # Add 3 reaction (different emojis) here
+'''
 
 client.run(bot_token)
 
