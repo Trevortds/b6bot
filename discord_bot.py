@@ -1,10 +1,11 @@
 import json
 import os
 import discord
-from discord import app_commands, TextChannel, Reaction, User
+from discord import app_commands, TextChannel, Reaction, User, Interaction
 from discord.ext import tasks, commands
+from datetime import date
 
-from asana_bot import process_events, check_for_upcoming_events
+from asana_bot import process_events, check_for_upcoming_events, chores_project, decisions_project, create_new_task
 
 intents = discord.Intents.default()
 client = discord.Client(intents=intents)
@@ -68,7 +69,7 @@ class AsanaWatcher(commands.Cog):
     async def check_new_asana_events(self):
         self.message_count += 1
         channel = self.client.get_channel(1054443400767741972)
-        await process_events(self.channel_objects)
+        await process_events(new_task_callbacks=[self.announce_new_task])
 
     @tasks.loop(hours=24*7)
     async def check_upcoming_unassigned_events(self):
@@ -83,6 +84,28 @@ class AsanaWatcher(commands.Cog):
         emoji = reaction.emoji
         if user.bot:
             return
+
+    async def announce_new_task(self, event):
+        # select channel based on which project task was created in
+        if event["parent"]['gid'] == chores_project['gid']:
+            channel = self.channel_objects["test"]
+        else:
+            channel = self.channel_objects["test"]
+        # embed information
+        embed = discord.Embed(title=f"{event['resource']['name']}", color=0x00ff00)
+        embed.add_field(name='Project', value=event['parent']['name'], inline=True)
+        if event.get('user'):
+            embed.add_field(name='Author', value=event.get('user', {}).get('name', "Automated"))
+        if event['resource'].get("notes"):
+            embed.add_field(name="Description", value=event['resource'].get("notes"))
+        embed.url = f"https://app.asana.com/0/{event['parent']['gid']}/{event['resource']['gid']}"
+        message = await channel.send(event['resource']['name'], embed=embed)
+        # add volunteer reaction
+        await message.add_reaction("🙋")
+        # make discussion thread for new decisions
+        if event["parent"]['gid'] == decisions_project['gid']:
+            thread = await message.create_thread(name=event['resource']['name'])
+            await thread.send("Conversation goes here")
 
 
 @client.event

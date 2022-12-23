@@ -13,7 +13,6 @@ from collections.abc import Callable, Iterable
 
 from discord import TextChannel
 
-
 # Note: Replace this value with your own personal access token
 
 personal_access_token = os.environ["ASANA_KEY"]
@@ -28,7 +27,7 @@ client.options['client_name'] = "hello_world_python"
 me = client.users.me()
 
 # Print out your information
-print("Hello world! " + "My name is " + me['name'] + "!")
+print("logged in to asana client as " +  me['name'])
 
 client.projects.find_all
 
@@ -36,8 +35,7 @@ b6workspace = client.workspaces.find_by_id(1203279608416517)
 decisions_project = client.projects.find_by_id(1203279731709143)
 chores_project = client.projects.find_by_id(1203288705129613)
 known_projects = [decisions_project, chores_project]
-known_project_ids = list(map( lambda x: x["gid"], known_projects))
-
+known_project_ids = list(map(lambda x: x["gid"], known_projects))
 
 test_channel = 1054443400767741972
 main_private_channel = 1025848715702980673
@@ -59,6 +57,7 @@ def get_events_sync_token(resource_id):
         list(client.events.get({"resource": resource_id}))
     except InvalidTokenError as e:
         return e.sync
+
 
 print(known_project_ids)
 sync_tokens = {resource_id: get_events_sync_token(resource_id) for resource_id in known_project_ids}
@@ -105,12 +104,14 @@ async def on_new_assignee(event, callbacks: Iterable[Callable] = []):
     for callback in callbacks:
         callback(event)
 
+
 def print_assignee(event):
     print(event)
     if event['change']['new_value'] is None:
         print(f"Task {event['resource']['name']} unassigned")
     else:
-        print(f"New assignee {event['change'].get('new_value', {}).get('name')} added to task: {event['resource']['name']}")
+        print(
+            f"New assignee {event['change'].get('new_value', {}).get('name')} added to task: {event['resource']['name']}")
 
 
 async def print_new(event):
@@ -118,44 +119,21 @@ async def print_new(event):
     print(f"New task {event['resource']['name']} added to project: {event['parent']['name']}")
 
 
-async def new_task_to_discord(event, channel_dict: dict[str, TextChannel]):
-    if event["parent"]['gid'] == chores_project['gid']:
-        channel = channel_dict["test"]
-    else:
-        channel = channel_dict["test"]
-
-    embed = discord.Embed(title=f"{event['resource']['name']}", color=0x00ff00)
-    embed.add_field(name='Project', value=event['parent']['name'], inline=True)
-    if event.get('user'):
-        embed.add_field(name='Author', value=event.get('user', {}).get('name', "Automated"))
-    embed.url = f"https://app.asana.com/0/{event['parent']['gid']}/{event['resource']['gid']}"
-    message = await channel.send(event['resource']['name'], embed=embed)
-
-    await message.add_reaction("🙋")
-    if event["parent"]['gid'] == decisions_project['gid']:
-        thread = await message.create_thread(name=event['resource']['name'])
-        await thread.send("Conversation goes here")
-
-
-
-
 async def check_for_upcoming_events(channel: TextChannel):
     pass
 
 
-async def process_events(channel_dict: dict[str, TextChannel]):
+async def process_events(new_task_callbacks: Iterable[Callable] = None,
+                         new_assignee_callbacks: Iterable[Callable] = None):
+    if new_assignee_callbacks is None:
+        new_assignee_callbacks = []
+    if new_task_callbacks is None:
+        new_task_callbacks = []
     event_generator = get_events_from_resources([chores_project["gid"], decisions_project["gid"]])
 
     for next_event in event_generator:
-        print(client)
-        await on_new_tasks(next_event, [print_new, lambda x: new_task_to_discord(x, channel_dict)])
-        await on_new_assignee(next_event, [print_assignee])
-
-
-def schedule_test(text):
-    print("this text was scheduled for now: " + text)
-
-def main():
+        await on_new_tasks(next_event, [print_new] + new_task_callbacks)
+        await on_new_assignee(next_event, [print_assignee] + new_assignee_callbacks)
 
     schedule.every(10).seconds.do(process_events)
     schedule.every().saturday.at("15:00").do(schedule_test, text="it's three pm")
