@@ -147,7 +147,7 @@ class AsanaWatcher(commands.Cog):
 
     @client.event
     async def on_reaction_add(self, reaction, user):
-        # this doesn't work either
+        # this doesn't work
         print("new reaction")
         print(reaction)
         print(user)
@@ -182,7 +182,7 @@ class AsanaWatcher(commands.Cog):
 
 @client.event
 async def on_reaction_add(reaction: Reaction, user: User):
-    # this doesn't work
+    # this works now
     print("new reaction client")
     print(reaction)
     emoji = reaction.emoji
@@ -197,6 +197,7 @@ async def on_reaction_add(reaction: Reaction, user: User):
     for embed in reaction.message.embeds:
         print(embed)
         print(embed.url)
+        assign_user_to_task(user.name, embed.url)
 
 
 

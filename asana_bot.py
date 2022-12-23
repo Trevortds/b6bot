@@ -168,3 +168,5 @@ def get_upcoming_tasks():
         return (not task.get('completed')) and \
                date.fromisoformat(task.get('due_on') or '2022-01-01') < date.today() + timedelta(days=7)
     return filter(filter_upcoming, gen)
+
+def assign_user_to_task(name, url):
