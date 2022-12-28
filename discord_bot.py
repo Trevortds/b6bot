@@ -6,7 +6,7 @@ from discord.ext import tasks, commands
 from datetime import date
 
 from asana_bot import process_events, check_for_upcoming_events, chores_project, decisions_project, create_new_task, \
-    get_task_info, get_upcoming_tasks
+    get_task_info, get_upcoming_tasks, assign_user_to_task
 
 intents = discord.Intents.default()
 client = discord.Client(intents=intents)
@@ -28,6 +28,7 @@ worker_bae_channel = 1039584677712896110
 @tree.command(name="createtask", description="Create an asana task in the General project",
               guild=discord.Object(id=guild_id))
 @app_commands.choices(assignee=[
+        app_commands.Choice(name="None", value=""),
         app_commands.Choice(name="Bay Six", value="infoatbay6@gmail.com"),
         app_commands.Choice(name="Trevor", value="trevortds3@gmail.com"),
         app_commands.Choice(name="Amelia", value="ameliafineberg@gmail.com"),
@@ -37,10 +38,9 @@ worker_bae_channel = 1039584677712896110
         app_commands.Choice(name="Kit", value="soongkit@gmail.com"),
         app_commands.Choice(name="Hale", value="hmmottinger@gmail.com"),
         app_commands.Choice(name="Noah", value="nabrahamson@gmail.com"),
-        app_commands.Choice(name="Ylva", value="baristasupreme@icloud.com"),
-        app_commands.Choice(name="None", value="")
+        app_commands.Choice(name="Ylva", value="baristasupreme@icloud.com")
         ])
-async def create_task(interaction: Interaction, name: str, due_date_y_m_d: str=date.today().isoformat(), assignee: app_commands.Choice[str] = "", description: str = ""):
+async def create_task(interaction: Interaction, name: str,  assignee: app_commands.Choice[str], due_date_y_m_d: str=date.today().isoformat(), description: str = ""):
     print(interaction)
     print(interaction.user.display_name)
     print(assignee.value)
@@ -49,13 +49,14 @@ async def create_task(interaction: Interaction, name: str, due_date_y_m_d: str=d
         print(new_task)
         await interaction.response.send_message("created task: " + new_task['permalink_url'])
     except Exception as e:
-        await interaction.response.send_message("Something went wrong: " + e)
+        await interaction.response.send_message("Something went wrong: " + str(e))
 
 
 @tree.command(name="createdecision",
               description="Create an asana task in the decision project, and open a thread about it",
               guild=discord.Object(id=guild_id))
 @app_commands.choices(owner=[
+        app_commands.Choice(name="None", value=""),
         app_commands.Choice(name="Bay Six", value="infoatbay6@gmail.com"),
         app_commands.Choice(name="Trevor", value="trevortds3@gmail.com"),
         app_commands.Choice(name="Amelia", value="ameliafineberg@gmail.com"),
@@ -65,8 +66,7 @@ async def create_task(interaction: Interaction, name: str, due_date_y_m_d: str=d
         app_commands.Choice(name="Kit", value="soongkit@gmail.com"),
         app_commands.Choice(name="Hale", value="hmmottinger@gmail.com"),
         app_commands.Choice(name="Noah", value="nabrahamson@gmail.com"),
-        app_commands.Choice(name="Ylva", value="baristasupreme@icloud.com"),
-        app_commands.Choice(name="None", value="")
+        app_commands.Choice(name="Ylva", value="baristasupreme@icloud.com")
         ])
 async def create_decision(interaction: Interaction, name: str, description: str,  owner: app_commands.Choice[str], due_date_y_m_d: str=date.today().isoformat(),):
     print(interaction)
@@ -78,7 +78,7 @@ async def create_decision(interaction: Interaction, name: str, description: str,
         print(new_task)
         await interaction.response.send_message("created decision: " + new_task['permalink_url'])
     except Exception as e:
-        await interaction.response.send_message("Something went wrong: " + e)
+        await interaction.response.send_message("Something went wrong: " + str(e))
 
 
 @client.event
@@ -105,7 +105,7 @@ class AsanaWatcher(commands.Cog):
         self.data = []
         self.message_count = 0
         self.check_new_asana_events.start()
-        self.check_upcoming_unassigned_events.start()
+        # self.check_upcoming_unassigned_events.start()
 
     def cog_unload(self) -> None:
         self.check_new_asana_events.cancel()
@@ -186,6 +186,7 @@ async def on_reaction_add(reaction: Reaction, user: User):
     print("new reaction client")
     print(reaction)
     emoji = reaction.emoji
+    print(emoji)
     if user.bot:
         return
 
@@ -194,10 +195,16 @@ async def on_reaction_add(reaction: Reaction, user: User):
     print(user.name)
     print(user)
     print(reaction.message.embeds)
-    for embed in reaction.message.embeds:
-        print(embed)
-        print(embed.url)
-        assign_user_to_task(user.name, embed.url)
+    embed = reaction.message.embeds[0]
+    print(embed)
+    print(embed.url)
+    try:
+        result = assign_user_to_task(user.name, embed.url)
+        embed.add_field(name="Volunteer", value=user.display_name, inline=False)
+        await reaction.message.edit(embeds=[embed])
+    except Exception as e:
+        await reaction.message.channel.send("Failed to self-assign: " + str(e))
+
 
 
 

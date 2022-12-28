@@ -169,4 +169,25 @@ def get_upcoming_tasks():
                date.fromisoformat(task.get('due_on') or '2022-01-01') < date.today() + timedelta(days=7)
     return filter(filter_upcoming, gen)
 
+name_to_email = {
+    "Anarion": "trevortds3@gmail.com",
+    "cattrebuchet": "ameliafineberg@gmail.com",
+    "Jules (The Coven)": "funsizedfox@gmail.com",
+    "Mayhem": "mmayhemstudio7@gmail.com",
+    "heckinPITA": "boettcsm@gmail.com",
+    "PolyOzymandias": "soongkit@gmail.com",
+    "𝓞𝓹𝓪𝓵 𝓑𝓾𝓷𝓷𝔂": "hmmottinger@gmail.com",
+    "LoafusCromwel": "nabrahamson@gmail.com",
+    "ladydimitrescustampon": "baristasupreme@icloud.com"
+}
+
 def assign_user_to_task(name, url):
+    task_gid = url.split('/')[-1]
+    task = client.tasks.get_task(task_gid)
+    print(f"assigning {name} to this task {task}")
+    print(task)
+    if name not in name_to_email:
+        raise Exception(f"I don't know the email of user {name}")
+    result = client.tasks.update_task(task_gid, {'assignee': name_to_email[name]}, opt_pretty=True)
+    print(result)
+    return result
